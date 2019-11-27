@@ -1,6 +1,30 @@
-Vagrant Image -- Centos Latest
-$ cat /etc/redhat-release 
-CentOS Linux release 7.7.1908 (Core)
+# Install Vagrant and Virtualbox and Create a Vagrant file with the below entries.
+
+##### Vagrantfile ####### -- Put the below code into this file.
+
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.define "acs" do |acs|
+  acs.vm.box = "centos/7"
+  acs.vm.network "forwarded_port", guest: 80, host: 8080
+  acs.vm.network "private_network", ip: "192.168.33.10"
+  acs.vm.hostname = "acs"
+  acs.vm.provision "shell", inline: <<-SHELL
+    yum -y update
+    yum install -y nano vi
+    sed -i "s/^PasswordAuthentication no/PasswordAuthentication yes/" /etc/ssh/sshd_config
+    systemctl restart sshd
+  SHELL
+  end
+end
+
+# vagrant up acs
+
+# vagrant status
+
+# vagrant ssh acs or ssh vagrant@192.168.33.10  { password for vagrant user is vagrant }
 
 ========================
 
@@ -16,7 +40,7 @@ $ rpm --root $centos_root --initdb
 # download and install the centos-release package, it contains our repository sources
 $ sudo  yum install yum-utils -y
 $ yumdownloader centos-release
-$ rpm --root $centos_root -ivh centos-release*.rpm
+$ rpm --nodeps --root $centos_root -ivh centos-release*.rpm
 $ rpm --root $centos_root --import  $centos_root/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
 
 # install yum without docs and install only the english language files during the process
@@ -29,8 +53,12 @@ $ sed -i "/distroverpkg=centos-release/a override_install_langs=en_US.utf8\ntsfl
 $ echo "nameserver 4.2.2.2" >> /etc/resolv.conf 
 $ echo "nameserver 8.8.8.8" >> /etc/resolv.conf 
 
-# chroot to the environment and install some additional tools like yum-ovl
 $ cp /etc/resolv.conf $centos_root/etc
+
+#binding the dev to the root filesystem
+mount -o bind /dev $centos_root/dev
+
+# chroot to the environment and install some additional tools like yum-ovl
 $ chroot $centos_root /bin/bash <<EOF
 yum install -y procps-ng iputils yum-ovl
 yum clean all
@@ -51,4 +79,3 @@ $ docker images
 # run docker image for testing
 $ docker run --rm centos cat /etc/redhat-release
 CentOS Linux release 7.2.1511 (Core)
-
