@@ -1,0 +1,36 @@
+#!/bin/bash 
+
+# Create a folder for our new root structure
+$ export centos_root='/centos_image/rootfs'
+$ mkdir -p $centos_root
+
+# initialize rpm database
+$ rpm --root $centos_root --initdb
+
+# download and install the centos-release package, it contains our repository sources
+# grab the centos-release package appropriate to your architecture
+$ wget http://mirror.lax.genesisadaptive.com/centos/8.0.1905/BaseOS/aarch64/os/Packages/centos-release-8.0-0.1905.0.9.el8.aarch64.rpm
+$ rpm --nodeps --root $centos_root -ivh centos-release*.rpm
+$ rpm --root $centos_root --import  $centos_root/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+
+# install dnf without docs during the process
+$ dnf -y --installroot=$centos_root --setopt=tsflags='nodocs' install dnf
+
+# configure dnf to avoid installing of docs
+echo "tsflags=nodocs" >> $centos_root/etc/dnf/dnf.conf
+
+# chroot to the environment and install some additional tools
+$ cp /etc/resolv.conf $centos_root/etc
+$ chroot $centos_root /bin/bash <<EOF
+dnf install -y procps-ng iputils
+dnf clean all
+EOF
+$ rm -f $centos_root/etc/resolv.conf
+
+# install and enable docker
+$ dnf install -y docker
+...
+$ systemctl start docker
+
+# create docker image
+$ tar -C $centos_root -c . | docker import - centos
